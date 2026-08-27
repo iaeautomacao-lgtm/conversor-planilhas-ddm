@@ -1,0 +1,189 @@
+{
+  "name": "UNIVERSIDADE CASTELO BRANCO_UCB",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## UNIVERSIDADE CASTELO BRANCO - UCB - AJUSTAR APÓS O ENVIO DAS PLANILHAS DE REF. / CODE FORMATADO",
+        "height": 480,
+        "width": 3104,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "23d0dab4-fce8-4cf7-b0a1-115eeb4ada45",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ucb",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        144
+      ],
+      "id": "6b06e4b9-ac63-4c81-a02c-d16282a2b413",
+      "name": "Webhook",
+      "webhookId": "abd2d290-a813-4950-8cb6-240f18eb6277"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🏫 UNIVERSIDADE CASTELO BRANCO — ETL CORRIGIDO E BLINDADO\n\nconst map = {\n  'MATRICULA': 'MATRÍCULA',\n  'NOME ALUNO': 'ALUNO',\n  'CURSO': 'CURSO',\n  'CPF': 'CPF RESPONSÁVEL',\n  'DATA DE NASCIMENTO': 'DATA NASCIMENTO',\n  'ENDEREÇO': 'ENDEREÇO',\n  'BAIRRO': 'BAIRRO',\n  'CIDADE': 'CIDADE',\n  'CEP': 'CEP',\n  'ESTADO': 'ESTADO',\n  'TELEFONE 1': 'TELEFONE 1',\n  'TELEFONE 2': 'TELEFONE 2',\n  'RESPONSÁVEL': 'NOME RESPONSÁVEL',\n  'REFERENCIA': 'ID PARCELA',\n  'DATA VENCIMENTO': 'VENCIMENTO',\n  'VALOR PARCELA': 'LÍQUIDO',\n  'EMAIL': 'EMAIL'\n};\n\n// 🔤 normalização (remove acento + case insensitive)\nconst normalize = str =>\n  str\n    ? str.toString()\n        .normalize(\"NFD\")\n        .replace(/[\\u0300-\\u036f]/g, \"\")\n        .toLowerCase()\n        .trim()\n    : '';\n\n// 🧹 limpeza\nconst limparAspas = v =>\n  v !== null && v !== undefined\n    ? v.toString().replace(/\"\"/g,'').replace(/['\"]/g,'').trim()\n    : '';\n\nconst limparEndereco = v =>\n  v ? v.toString().replace(/[.,;:]/g,'').trim() : '';\n\nconst limparEmail = v =>\n  v ? v.toString().replace(/['\"]/g,'').trim() : '';\n\n// 🪪 CPF\nconst formatarCPF = v => {\n  if (!v) return '=\"00000000000\"';\n  const num = v.toString().replace(/\\D/g,'');\n  return `=\"${num.padStart(11,'0').slice(0,11)}\"`;\n};\n\n// 🔢 REFERENCIA — 11 dígitos com zeros à esquerda e protegido no Excel\nconst formatarReferencia = v => {\n  if (!v) return '=\"00000000000\"';\n\n  const num = v.toString().replace(/\\D/g, '');\n  const ref = num.padStart(11, '0').slice(-11);\n\n  return `=\"${ref}\"`;\n};\n\n// 📅 DATA — AAAAMMDD, incluindo número serial do Excel\nconst formatarData = v => {\n  if (v === null || v === undefined || v === '') return '';\n\n  const s = v.toString().trim();\n\n  // já está no formato AAAAMMDD\n  if (/^\\d{8}$/.test(s)) return s;\n\n  // formato dd/mm/yyyy\n  if (/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(s)) {\n    const [d, m, a] = s.split('/');\n    return `${a}${m.padStart(2, '0')}${d.padStart(2, '0')}`;\n  }\n\n  // formato yyyy-mm-dd\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) {\n    const [a, m, d] = s.split('-');\n    return `${a}${m}${d}`;\n  }\n\n  // número serial do Excel\n  if (/^\\d+$/.test(s)) {\n    const serial = parseInt(s, 10);\n\n    // faixa razoável para datas Excel\n    if (serial > 20000 && serial < 60000) {\n      const base = new Date(Date.UTC(1899, 11, 30));\n      base.setUTCDate(base.getUTCDate() + serial);\n\n      const ano = base.getUTCFullYear();\n      const mes = String(base.getUTCMonth() + 1).padStart(2, '0');\n      const dia = String(base.getUTCDate()).padStart(2, '0');\n\n      return `${ano}${mes}${dia}`;\n    }\n  }\n\n  // fallback comum\n  const d = new Date(s);\n  if (!isNaN(d)) {\n    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;\n  }\n\n  return '';\n};\n\n// 💰 VALOR\nconst formatarValor = v => {\n  if (!v) return '=\"0,00\"';\n\n  let limpo = v.toString().replace(/[^\\d.,-]/g,'');\n\n  if (limpo.includes(',') && limpo.includes('.')) {\n    limpo = limpo.replace(/\\./g,'');\n  }\n\n  limpo = limpo.replace(',','.');\n\n  let num = parseFloat(limpo);\n  if (isNaN(num)) num = 0;\n\n  return `=\"${num.toFixed(2).replace('.',',')}\"`;\n};\n\n// 👤 RESPONSÁVEL\nconst limparResponsavel = v => {\n  if (!v) return '';\n\n  return v\n    .toString()\n    .replace(/[\"']/g,'')\n    .replace(/\\d{1,2}\\/\\d{1,2}\\/\\d{2,4}/g,'')\n    .replace(/;/g,'')\n    .replace(/\"\"/g,'')\n    .trim();\n};\n\n// 📥 leitura\nlet inputData = $input.all().map(i => i.json);\n\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = inputData[0].data;\n}\n\n// 🧭 headers inteligentes\nconst headers = {};\nif (inputData.length) {\n  Object.keys(inputData[0]).forEach(k => {\n    headers[normalize(k)] = k;\n  });\n}\n\n// 🔍 getValue inteligente\nconst getValue = (row, col) => {\n  const variations = [\n    col,\n    col.replace(/_/g,' '),\n    col.replace(/ /g,'_')\n  ];\n\n  for (const v of variations) {\n    const key = headers[normalize(v)];\n    if (key) return row[key];\n  }\n\n  return '';\n};\n\n// 🧱 processamento\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida,entrada] of Object.entries(map)) {\n    let valor = limparAspas(getValue(row, entrada));\n\n    switch(saida){\n  case 'ENDEREÇO':\n    valor = limparEndereco(valor);\n    break;\n\n  case 'CPF':\n    valor = formatarCPF(valor);\n    break;\n\n  case 'DATA DE NASCIMENTO':\n  case 'DATA VENCIMENTO':\n    valor = formatarData(valor);\n    break;\n\n  case 'VALOR PARCELA':\n    valor = formatarValor(valor);\n    break;\n\n  case 'RESPONSÁVEL':\n    valor = limparResponsavel(valor);\n    break;\n\n  case 'EMAIL':\n    valor = limparEmail(valor);\n    break;\n\n  case 'REFERENCIA':\n    valor = formatarReferencia(valor);\n    break;\n}\n\n    novo[saida] = valor;\n  }\n\n  return { json: novo };\n});\n\n// remove só linhas vazias\nreturn output.filter(item =>\n  Object.values(item.json).some(v => v && v.toString().trim() !== '')\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        144
+      ],
+      "id": "2c80f3a3-eb0b-4e78-814e-68f9cde6d8d4",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=utf-8"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"ucb.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2880,
+        144
+      ],
+      "id": "6f01e39d-3e55-4379-ae06-ab2221e611c9",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"parameters\": {\n  \"operation\": \"csv\",\n  \"binaryPropertyName\": \"file\",\n  \"options\": {\n    \"fileName\": \"ucb.csv\",\n    \"delimiter\": \";\"\n     \"enconding\": \"utf8\"\n  }\n}\n\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "ucb_saida.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2192,
+        144
+      ],
+      "id": "30f19511-7e46-4df7-8286-5b76f6f9066f",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "file0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        688,
+        144
+      ],
+      "id": "a2ff887e-2843-4a80-b7ea-19c70c19f14a",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "content": "## REGRAS\n1. Referência é a coluna ID Parcela\n2. Valor é o valor líquido\n3. Verificar (“”), data, ( ; ) no responsável\n",
+        "height": 128,
+        "width": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "b3907a21-d884-43f1-8470-a4fefee79206",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "efe81be3-ef0b-40ae-a5d6-da9b064230fc",
+  "meta": {
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "RWYMPstWdTfSNMxkhSFBQ",
+  "tags": []
+}

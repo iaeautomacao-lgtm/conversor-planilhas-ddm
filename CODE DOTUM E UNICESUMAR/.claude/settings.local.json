@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(gh auth *)",
+      "Bash(py -m py_compile app/main.py)",
+      "Bash(git check-ignore *)"
+    ]
+  }
+}

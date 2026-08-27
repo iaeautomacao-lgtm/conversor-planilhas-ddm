@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/SEU_USUARIO_CPANEL/public_html/
+    - /bin/cp -R FRONTEND_CPANEL/* $DEPLOYPATH

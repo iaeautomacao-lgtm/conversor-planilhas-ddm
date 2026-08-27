@@ -1,0 +1,214 @@
+{
+  "name": "ISAAC ATIVO 2",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ISAAC",
+        "height": 480,
+        "width": 2144,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1824,
+        -608
+      ],
+      "typeVersion": 1,
+      "id": "6f80a8ff-8ac8-468c-a189-7c7b3405d62a",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "file0",
+        "options": {
+          "delimiter": ","
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        -448
+      ],
+      "id": "2ecf5407-74be-42bc-b580-dd7db56c0a4f",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "isaacativo2",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1888,
+        -448
+      ],
+      "id": "ac2f0448-57f2-4c6b-ac60-e6a22c1d4de9",
+      "name": "Webhook1",
+      "webhookId": "dee9af55-2994-4e32-8828-91758a08d27f"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=windows-1252"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"isaac.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3616,
+        -448
+      ],
+      "id": "b4391a25-3fae-4955-b013-84aa5b14eb20",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"parameters\": {\n  \"operation\": \"csv\",\n  \"binaryPropertyName\": \"file\",\n  \"options\": {\n    \"fileName\": \"isaac.csv\",\n    \"delimiter\": \";\",\n    \"encoding\": \"windows-1252\"\n  }\n}\n\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "saida.csv",
+          "headerRow": false
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3136,
+        -448
+      ],
+      "id": "fcfd129e-2f44-4df9-a577-7e67817ec85c",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalizarStatus = v =>\n  v === null || v === undefined ? ''\n  : String(v).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();\n\nconst map = {\n  'CPF (A)': 'CPF',\n  'NOME ALUNO (B)': 'NOME_ALUNO',\n  'NOME ESCOLA (C)': 'NOME_ESCOLA',\n  'CPF (D)': 'CPF',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'TELEFONE (K)': 'TELEFONE',\n  'VAZIA (L)': '',\n  'VAZIA (M)': '',\n  'MENSALIDADE (N)': '',\n  'DATA RECEBIVEL RECENTE (O)': 'DATA_RECEBIVEL_VENCIDO_MAIS_RECENTE',\n  'VALOR DEVIDO (P)': 'VALOR_DEVIDO',\n  'EMAIL (Q)': 'EMAIL',\n  'NOME RESPONSAVEL (R)': 'NOME_RESPONSAVEL',\n  'CPF (S)': 'CPF',\n  'VAZIA (T)': '',\n  'VAZIA (U)': '',\n  'VAZIA (V)': '',\n  'VAZIA (W)': '',\n  'VAZIA (X)': '',\n  'VAZIA (Y)': '',\n  'TELEFONE (Z)': 'TELEFONE',\n  'VAZIA (AA)': '',\n  'EMAIL (AB)': 'EMAIL'\n};\n\nconst limparBase = v => v === null || v === undefined ? '' : String(v).replace(/[\"']/g, '').trim();\nconst formatarCPF = v => '=\"' + String(v ?? '').replace(/\\D/g, '').padStart(11, '0').slice(-11) + '\"';\nconst formatarTelefone = v => limparBase(v).replace(/\\D/g, '');\nconst formatarEmail = v => limparBase(v).toLowerCase();\n\nconst serialParaData = v => {\n  const s = parseInt(String(v).trim());\n  if (isNaN(s) || s < 1) return '';\n  const d = new Date((s - 25569) * 86400000);\n  return d.getUTCFullYear() +\n    String(d.getUTCMonth() + 1).padStart(2, '0') +\n    String(d.getUTCDate()).padStart(2, '0');\n};\n\nconst formatarData = v => {\n  if (!v) return '';\n  const s = limparBase(v);\n  if (!s) return '';\n  if (/^\\d{8}$/.test(s)) return s;\n  if (/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(s)) {\n    const [dia, mes, ano] = s.split('/');\n    return ano + mes.padStart(2, '0') + dia.padStart(2, '0');\n  }\n  if (/^\\d{4,6}$/.test(s)) return serialParaData(s);\n  return '';\n};\n\nconst formatarValor = v => {\n  if (v === null || v === undefined || v === '') return '=\"0,00\"';\n  const s = String(v).trim().replace(/[^\\d.,]/g, '');\n  let num;\n  if (/^\\d{1,3}(\\.\\d{3})*,\\d+$/.test(s)) {\n    num = parseFloat(s.replace(/\\./g, '').replace(',', '.'));\n  } else if (/^\\d+\\.\\d+$/.test(s)) {\n    num = parseFloat(s);\n  } else {\n    num = parseFloat(s.replace(',', '.'));\n  }\n  if (isNaN(num)) return '=\"0,00\"';\n  return '=\"' + num.toFixed(2).replace('.', ',') + '\"';\n};\n\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) inputData = inputData[0].data;\n\ninputData = inputData.filter(row => {\n  const chaveStatus = Object.keys(row).find(k => normalizarStatus(k) === 'status');\n  if (!chaveStatus) return false;\n  return normalizarStatus(row[chaveStatus]) === 'inadimplente';\n});\n\nconst output = inputData.map(row => {\n  const novo = {};\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = entrada ? row[entrada] ?? '' : '';\n    switch (saida) {\n      case 'CPF (A)': case 'CPF (D)': case 'CPF (S)':\n        valor = formatarCPF(valor); break;\n      case 'TELEFONE (K)': case 'TELEFONE (Z)':\n        valor = formatarTelefone(valor); break;\n      case 'EMAIL (Q)': case 'EMAIL (AB)':\n        valor = formatarEmail(valor); break;\n      case 'DATA RECEBIVEL RECENTE (O)':\n        valor = formatarData(valor); break;\n      case 'VALOR DEVIDO (P)':\n        valor = formatarValor(valor); break;\n      case 'MENSALIDADE (N)':\n        valor = 'MENSALIDADE'; break;\n      default:\n        valor = limparBase(valor);\n    }\n    novo[saida] = String(valor);\n  }\n  return { json: novo };\n});\n\nreturn output.filter(item => Object.values(item.json).some(v => v !== ''));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        -448
+      ],
+      "id": "092d9532-60cb-45ac-84c8-f82708676c80",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "content": "## SÓ FILTRA PELOS \"INADIMPLENTES",
+        "height": 112
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2000,
+        -768
+      ],
+      "typeVersion": 1,
+      "id": "0cc021fc-c433-4312-8fcc-6e7bf3fcfa2f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = await this.helpers.getBinaryDataBuffer(0, 'file0');\nconst raw = binaryData.toString('utf-8');\n\nconst lines = raw.split('\\r\\n');\nconst delimiter = lines[0].includes(';') ? ';' : ',';\nconst output = [];\n\nfor (const line of lines) {\n  if (!line.trim()) continue;\n\n  let l = line;\n\n  if (l.startsWith('\"') && l.endsWith('\"')) {\n    l = l.slice(1, -1);\n  }\n\n  l = l.replace(/\"\"/g, '\\x01');\n\n  let parts = l.split(delimiter);\n  parts = parts.slice(0, 13);\n\n  const cleaned = parts.map(cell => {\n    cell = cell.replace(/\\x01/g, '').trim();\n    cell = cell.replace(/^(\\d+),(\\d+)$/, '$1.$2');\n    cell = cell.replace(/,/g, ' | ');\n    cell = cell.replace(/\"/g, '');\n    return cell;\n  });\n\n  if (delimiter === ',' && cleaned.length === 13 &&\n      /^\\d+$/.test(cleaned[5]) && /^\\d{1,2}$/.test(cleaned[6])) {\n    cleaned[5] = cleaned[5] + '.' + cleaned[6];\n    cleaned.splice(6, 1);\n    cleaned.push('');\n  }\n\n  output.push(cleaned.join(','));\n}\n\nconst newCsv = output.join('\\r\\n');\nconst newBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(newCsv, 'utf-8'),\n  'cleaned.csv',\n  'text/csv'\n);\n\nreturn [{ json: {}, binary: { file0: newBinary } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2096,
+        -448
+      ],
+      "id": "f934ab41-2f14-46ae-aed5-6eeba80e1ca8",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ed80bbfb-fecd-4d39-8360-0d7c29772aa2",
+  "meta": {
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "ru_5J37TNq9gTp6jMYUVh",
+  "tags": []
+}

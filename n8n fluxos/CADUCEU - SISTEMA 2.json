@@ -1,0 +1,217 @@
+{
+  "name": "CADUCEU - SISTEMA 2",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SISTEMA 2",
+        "height": 480,
+        "width": 1936,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        64,
+        304
+      ],
+      "typeVersion": 1,
+      "id": "d4c9ce44-a55f-4c2c-9937-ca49c9b6562e",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "caduceusis2",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        432
+      ],
+      "id": "b7df29b7-1e1a-4460-ac9b-5bd6f20bd224",
+      "name": "Webhook",
+      "webhookId": "dee9af55-2994-4e32-8828-91758a08d27f"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=windows-1252"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"caduceu.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1824,
+        432
+      ],
+      "id": "9fb4bc8f-47cd-45d7-a76a-7a72bb21f511",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"parameters\": {\n  \"operation\": \"csv\",\n  \"binaryPropertyName\": \"file\",\n  \"options\": {\n    \"fileName\": \"caduceu.csv\",\n    \"delimiter\": \";\"\n     \"encoding\": \"windows-1252\"\n  }\n}\n\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "saida.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        432
+      ],
+      "id": "3b4fc26a-837c-45b3-a21e-3d845b715c9d",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "file0",
+        "options": {
+          "headerRow": true,
+          "sheetName": "sistema 2"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        608,
+        432
+      ],
+      "id": "07da751d-c6d6-4617-9e0a-8311f9f93f76",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === CADUCEU - SISTEMA 2 ===\n\n// 🗺️ Mapeamento fixo entre colunas de saída e as originais (corrigido com base na planilha)\nconst map = {\n  'CPF/CNPJ (A)': 'Cliente.NúmeroDoDocumento',\n  'NOME (B)': 'Cliente.Nome',\n  'DESCRIÇÃO (C)': 'Cobrança.Status',\n  'CPF/CNPJ (D)': 'Cliente.NúmeroDoDocumento',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'CELULAR (K)': 'Cliente.Telefones',\n  'VAZIA (L)': '',\n  'RESPONSÁVEL (M)': 'Cliente.Nome',\n  'NÚMERO FATURA (N)': 'Cobrança.IdDaFatura',\n  'NÚMERO DO BOLETO (O)': 'Cobrança.Id',\n  'VALOR (P)': 'Cobrança.Valor',\n  'EMAIL (Q)': 'Cliente.EMail'\n};\n\n// 🧩 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\n\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\n// ✅ CPF/CNPJ — 11 dígitos com zeros à esquerda, forçando texto no Excel\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  const cpfFormatado = num.padStart(11, '0').slice(-11);\n  return `=\"${cpfFormatado}\"`;\n};\n\n// 💰 Valor — duas casas decimais com vírgula, forçando texto no Excel\nconst formatarValor = valor => {\n  if (valor === undefined || valor === null || valor === '') return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim().replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`;\n};\n\n// ☎️ Telefone — mantém legível no Excel (evita notação científica)\nconst formatarTelefone = valor => {\n  if (!valor) return '';\n  let num = valor.toString().replace(/\\D/g, '').trim();\n  if (!num) return '';\n  num = num.padStart(11, '0');\n  return `=\"TEL${num}\"`;\n};\n\n// 🧩 Converte a primeira linha da planilha em cabeçalho real\nconst usarPrimeiraLinhaComoCabecalho = data => {\n  if (!Array.isArray(data) || data.length < 2) return [];\n  const headerRow = data[0];\n  const conteudo = data.slice(1);\n  return conteudo.map(row => {\n    const obj = {};\n    headerRow.forEach((col, i) => {\n      obj[col?.toString().trim()] = row[i];\n    });\n    return obj;\n  });\n};\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = usarPrimeiraLinhaComoCabecalho(inputData[0].data);\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n    if (entrada) valor = row[entrada] ?? '';\n\n    switch (saida) {\n      case 'CPF/CNPJ (A)':\n      case 'CPF/CNPJ (D)':\n        valor = formatarCPF(valor);\n        break;\n      case 'CELULAR (K)':\n        valor = formatarTelefone(valor);\n        break;\n      case 'VALOR (P)':\n        valor = formatarValor(valor);\n        break;\n      case 'EMAIL (Q)':\n        valor = limparEmail(valor);\n        break;\n    }\n\n    novo[saida] = valor;\n  }\n\n  return { json: novo };\n});\n\n// 🧹 Remove linhas completamente vazias\nconst resultadoFinal = output.filter(item => {\n  const str = Object.values(item.json || {}).join('').replace(/[^A-Za-z0-9]/g, '').trim();\n  return str.length > 0;\n});\n\nreturn resultadoFinal;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        864
+      ],
+      "id": "a66beda8-2d8b-4165-895a-3760d2aeb267",
+      "name": "Code in JavaScript",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// === CADUCEU - SISTEMA 2 (com formatação correta) ===\n\nconst map = {\n  'CPF/CNPJ (A)': 'CPF ou CNPJ',\n  'NOME (B)': 'Nome',\n  'DESCRIÇÃO': 'Descrição',\n  'CPF/CNPJ (D)': 'CPF ou CNPJ',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'CELULAR (K)': 'Celular',\n  'VAZIA (L)': '',\n  'RESPONSÁVEL (M)': 'Nome',\n  'COBRANÇA FATURA (N)': 'Identificador',\n  'DATA DE VENCIMENTO (O)': 'Vencimento',\n  'VALOR (P)': 'Valor',\n  'EMAIL (Q)': 'Email'\n};\n\n// 🔧 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  return `=\"${num.padStart(11, '0').slice(-11)}\"`;\n};\n\nconst formatarValor = valor => {\n  if (!valor) return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim().replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`;\n};\n\n// 🗓️ Converte número serial (tipo 45483.999...) → yyyymmdd\nconst formatarDataSerialExcel = valor => {\n  const num = parseFloat(valor);\n  if (isNaN(num)) return '';\n  \n  const baseDate = new Date(1899, 11, 30);\n  baseDate.setDate(baseDate.getDate() + Math.floor(num));\n\n  const yyyy = baseDate.getFullYear();\n  const mm = String(baseDate.getMonth() + 1).padStart(2, '0');\n  const dd = String(baseDate.getDate()).padStart(2, '0');\n\n  return `${yyyy}${mm}${dd}`;\n};\n\nconst formatarCelular = valor => {\n  if (!valor) return '';\n  let num = valor.toString().replace(/\\D/g, '').trim();\n  if (num.startsWith('55') && num.length > 11) {\n    num = num.slice(2);\n  }\n  return num ? `=\"${num}\"` : '';\n};\n\nconst formatarNumeroGrande = valor => {\n  if (!valor) return '';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  return num ? `=\"${num}\"` : '';\n};\n\nconst usarPrimeiraLinhaComoCabecalho = data => {\n  if (!Array.isArray(data) || data.length < 2) return [];\n  const headerRow = data[0];\n  const conteudo = data.slice(1);\n  return conteudo.map(row => {\n    const obj = {};\n    headerRow.forEach((col, i) => {\n      obj[col?.toString().trim()] = row[i];\n    });\n    return obj;\n  });\n};\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = usarPrimeiraLinhaComoCabecalho(inputData[0].data);\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n    if (entrada) valor = row[entrada] ?? '';\n\n    switch (saida) {\n      case 'CPF/CNPJ (A)':\n      case 'CPF/CNPJ (D)':\n        valor = formatarCPF(valor);\n        break;\n      case 'CELULAR (K)':\n        valor = formatarCelular(valor);\n        break;\n      case 'COBRANÇA FATURA (N)':\n        valor = formatarNumeroGrande(valor);\n        break;\n      case 'DATA DE VENCIMENTO (O)':\n        valor = formatarDataSerialExcel(valor);\n        break;\n      case 'VALOR (P)':\n        valor = formatarValor(valor);\n        break;\n      case 'EMAIL (Q)':\n        valor = limparEmail(valor);\n        break;\n    }\n\n    novo[saida] = valor;\n  }\n\n  // Garante colunas vazias\n  for (const [saida] of Object.entries(map)) {\n    if (saida.includes('VAZIA') && !(saida in novo)) novo[saida] = '';\n  }\n\n  return { json: novo };\n});\n\n// 🧹 Remove linhas vazias\nconst resultadoFinal = output.filter(item => {\n  const str = Object.values(item.json || {})\n    .join('')\n    .replace(/[^A-Za-z0-9]/g, '')\n    .trim();\n  return str.length > 0;\n});\n\nreturn resultadoFinal;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -96
+      ],
+      "id": "7e49611c-5228-475a-82d9-c16171ab9b5a",
+      "name": "Code in JavaScript1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// === CADUCEU - SISTEMA 1 (sem formatação de DATA DE VENCIMENTO) ===\n\nconst map = {\n  'CPF/CNPJ (A)': 'CPF ou CNPJ',\n  'NOME (B)': 'Nome',\n  'DESCRIÇÃO': 'Descrição',\n  'CPF/CNPJ (D)': 'CPF ou CNPJ',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'CELULAR (K)': 'Celular',\n  'VAZIA (L)': '',\n  'RESPONSÁVEL (M)': 'Nome',\n  'COBRANÇA FATURA (N)': 'Identificador',\n  'DATA DE VENCIMENTO (O)': 'Vencimento',\n  'VALOR (P)': 'Valor',\n  'EMAIL (Q)': 'Email'\n};\n\n// 🔧 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  return `=\"${num.padStart(11, '0').slice(-11)}\"`;\n};\n\nconst formatarValor = valor => {\n  if (!valor) return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim().replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`;\n};\n\n// 🗓️ Converte número serial (tipo 45483.999...) → yyyymmdd\nconst formatarDataSerialExcel = valor => {\n  const num = parseFloat(valor);\n  if (isNaN(num)) return '';\n  \n  // Excel base: 30/12/1899\n  const baseDate = new Date(1899, 11, 30);\n  baseDate.setDate(baseDate.getDate() + Math.floor(num));\n\n  const yyyy = baseDate.getFullYear();\n  const mm = String(baseDate.getMonth() + 1).padStart(2, '0');\n  const dd = String(baseDate.getDate()).padStart(2, '0');\n\n  return `${yyyy}${mm}${dd}`;\n};\n\nconst formatarCelular = valor => {\n  if (!valor) return '';\n  let num = valor.toString().replace(/\\D/g, '').trim();\n  if (num.startsWith('55') && num.length > 11) {\n    num = num.slice(2);\n  }\n  return num ? `=\"${num}\"` : '';\n};\n\nconst formatarNumeroGrande = valor => {\n  if (!valor) return '';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  return num ? `=\"${num}\"` : '';\n};\n\nconst usarPrimeiraLinhaComoCabecalho = data => {\n  if (!Array.isArray(data) || data.length < 2) return [];\n  const headerRow = data[0];\n  const conteudo = data.slice(1);\n  return conteudo.map(row => {\n    const obj = {};\n    headerRow.forEach((col, i) => {\n      obj[col?.toString().trim()] = row[i];\n    });\n    return obj;\n  });\n};\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = usarPrimeiraLinhaComoCabecalho(inputData[0].data);\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n    if (entrada) valor = row[entrada] ?? '';\n\n    switch (saida) {\n      case 'CPF/CNPJ (A)':\n      case 'CPF/CNPJ (D)':\n        valor = formatarCPF(valor);\n        break;\n      case 'CELULAR (K)':\n        valor = formatarCelular(valor);\n        break;\n      case 'COBRANÇA FATURA (N)':\n        valor = formatarNumeroGrande(valor);\n        break;\n      case 'DATA DE VENCIMENTO (O)':\n        valor = formatarDataSerialExcel(valor);\n        break;\n      case 'VALOR (P)':\n        valor = formatarValor(valor);\n        break;\n      case 'EMAIL (Q)':\n        valor = limparEmail(valor);\n        break;\n    }\n\n    novo[saida] = valor;\n  }\n\n  for (const [saida] of Object.entries(map)) {\n    if (saida.includes('VAZIA') && !(saida in novo)) novo[saida] = '';\n  }\n\n  return { json: novo };\n});\n\nconst resultadoFinal = output.filter(item => {\n  const str = Object.values(item.json || {})\n    .join('')\n    .replace(/[^A-Za-z0-9]/g, '')\n    .trim();\n  return str.length > 0;\n});\n\nreturn resultadoFinal;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        432
+      ],
+      "id": "18abfd97-859e-4e86-a02a-9962775fdf4b",
+      "name": "Code in JavaScript2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "73198006-76b4-4d0a-9a55-f509ce413208",
+  "meta": {
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "RfhjLepIvIHRpTjldE4tO",
+  "tags": [
+    {
+      "updatedAt": "2025-12-30T10:41:52.086Z",
+      "createdAt": "2025-12-30T10:41:52.086Z",
+      "id": "vP19iqpq9T24Z8bI",
+      "name": "Desenvolvimento"
+    }
+  ]
+}

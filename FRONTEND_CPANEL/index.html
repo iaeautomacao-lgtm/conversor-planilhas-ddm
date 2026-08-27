@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conversor de Arquivos - Grupo DDM</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>">
+</head>
+<body>
+
+  <!-- Banner Superior UNICESUMAR e DOCTUM -->
+  <div class="top-banner">
+    <div class="container">
+      <span>ℹ️ <strong>UNICESUMAR</strong> e <strong>DOCTUM</strong> acesse aqui:</span>
+      <a href="https://etl-ddm.onrender.com/docs#/" target="_blank" rel="noopener noreferrer">
+        etl-ddm.onrender.com ↗
+      </a>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <img src="assets/logo-grupo-ddm.png" alt="Grupo DDM" class="logo-img">
+        <div class="header-titles">
+          <h1>Conversor de Arquivos</h1>
+          <p>Upload, processamento e download automático</p>
+        </div>
+      </div>
+      <a href="settings.html" class="btn btn-outline btn-sm">
+        ⚙️ Configurações
+      </a>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+      <!-- Upload Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Upload de Arquivos</h2>
+          <p class="card-description">
+            Selecione arquivos <strong>.txt</strong>, <strong>.xls</strong> ou <strong>.xlsx</strong> para conversão automática para <strong>.csv</strong> ou <strong>.txt</strong>
+          </p>
+          <div class="alert alert-amber">
+            <span>ℹ️</span>
+            <div>
+              <strong>Atenção:</strong> O upload está limitado a 30 MB por arquivo. Para arquivos maiores, utilize 
+              <a href="https://etl-ddm.onrender.com/docs#/" target="_blank" rel="noopener noreferrer">etl-ddm.onrender.com</a>
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <!-- Seletor de Instituição -->
+          <div class="form-group">
+            <label for="institution-select" class="form-label">Instituição</label>
+            <select id="institution-select" class="select-input">
+              <option value="">Carregando instituições...</option>
+            </select>
+          </div>
+
+          <!-- Alerta Webhook não configurado -->
+          <div id="alert-no-webhook" class="alert alert-destructive" style="display: none; margin-bottom: 1.25rem;">
+            <span>⚠️</span>
+            <div>
+              Webhook não configurado — configure em 
+              <a href="integrations.html" style="color: inherit; font-weight: 600; text-decoration: underline;">
+                Configurações &gt; Integrações
+              </a>
+            </div>
+          </div>
+
+          <!-- Dropzone -->
+          <div id="dropzone" class="dropzone">
+            <div class="dropzone-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="dropzone-title">Arraste e solte seus arquivos aqui</div>
+            <div class="dropzone-subtitle">ou clique para selecionar múltiplos arquivos</div>
+            
+            <input type="file" id="file-input" class="hidden" style="display:none;" multiple accept=".txt,.xls,.xlsx,.csv,.ods">
+            
+            <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('file-input').click()">
+              Selecionar arquivos
+            </button>
+            <p style="font-size: 0.75rem; color: var(--muted-foreground); margin-top: 1.5rem;">
+              Formatos aceitos: <strong>.txt, .xls, .xlsx, .csv, .ods</strong>
+            </p>
+          </div>
+
+          <!-- Lista de Arquivos Selecionados -->
+          <div id="selected-files-container" style="display: none; margin-top: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+              <span id="selected-files-count" style="font-size: 0.875rem; font-weight: 500;">0 arquivo(s) selecionado(s)</span>
+            </div>
+            <div id="selected-files-list" class="file-list"></div>
+          </div>
+
+          <!-- Botão de Processar -->
+          <button id="btn-process" class="btn btn-primary btn-lg btn-full" style="margin-top: 1.5rem;" disabled>
+            Enviar e converter arquivos
+          </button>
+        </div>
+      </section>
+
+      <!-- History Section -->
+      <section class="card">
+        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+          <h2 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+            🕒 Histórico de Processamento
+          </h2>
+          <button id="btn-clear-history" class="btn btn-outline btn-sm">Limpar histórico</button>
+        </div>
+        <div class="card-content">
+          <!-- Histórico Vazio -->
+          <div id="history-empty" style="text-align: center; padding: 3rem 1rem; color: var(--muted-foreground);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+            <p>Nenhum arquivo processado ainda.</p>
+            <p style="font-size: 0.8125rem;">Faça upload de arquivos para ver o histórico aqui.</p>
+          </div>
+
+          <!-- Tabela de Histórico -->
+          <div id="history-table-container" class="table-container" style="display: none;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Arquivo</th>
+                  <th>Data/Hora</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Sistema de conversão de arquivos integrado ao n8n</p>
+      <p class="footer-warning">
+        ⚠️ Para qualquer modificação na formatação dos arquivos ou inclusão, acione o setor de <strong>Automação e IA</strong>.
+      </p>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

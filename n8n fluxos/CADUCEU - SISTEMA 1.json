@@ -1,0 +1,184 @@
+{
+  "name": "CADUCEU - SISTEMA 1",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SISTEMA 1",
+        "height": 480,
+        "width": 1936,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "d199cb07-5af9-4bbf-93a2-386fefca2a88",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "caduceusis1",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        -16
+      ],
+      "id": "41f348e3-7d43-4bd9-9346-8338902ae3a0",
+      "name": "Webhook",
+      "webhookId": "dee9af55-2994-4e32-8828-91758a08d27f"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=windows-1252"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"caduceu.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2176,
+        -16
+      ],
+      "id": "7fc30963-eee9-4b8b-9d3a-7cfdf053cdd3",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"parameters\": {\n  \"operation\": \"csv\",\n  \"binaryPropertyName\": \"file\",\n  \"options\": {\n    \"fileName\": \"caduceu.csv\",\n    \"delimiter\": \";\"\n     \"encoding\": \"windows-1252\"\n  }\n}\n\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "saida.csv",
+          "headerRow": false
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1696,
+        -16
+      ],
+      "id": "fad71bb0-9111-47a5-81c5-d49a1a1c9435",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "file0",
+        "options": {
+          "headerRow": true,
+          "sheetName": "Sistema 1"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -16
+      ],
+      "id": "ef95ff6d-e6ed-4ff1-ad96-8563805a6b45",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === CADUCEU - SISTEMA 1 (sem formatação de DATA DE VENCIMENTO) ===\n\nconst map = {\n  'CPF/CNPJ (A)': 'Cliente.NúmeroDoDocumento',\n  'NOME (B)': 'Cliente.Nome',\n  'VAZIA (C)': '',\n  'CPF/CNPJ (D)': 'Cliente.NúmeroDoDocumento',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'CELULAR (K)': 'Cliente.Telefones',\n  'VAZIA (L)': '',\n  'RESPONSÁVEL (M)': 'Cliente.Nome',\n  'COBRANÇA FATURA (N)': 'Cobrança.IdDaFatura',\n  'DATA DE VENCIMENTO (O)': 'Cobrança.DataDeVencimento',\n  'VALOR (P)': 'Cobrança.Valor',\n  'EMAIL (Q)': 'Cliente.EMail'\n};\n\n// 🔧 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  return `=\"${num.padStart(11, '0').slice(-11)}\"`;\n};\n\nconst formatarValor = valor => {\n  if (!valor) return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim().replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`;\n};\n\n// 🗓️ Converte número serial (tipo 45483.999...) → yyyymmdd\nconst formatarDataSerialExcel = valor => {\n  const num = parseFloat(valor);\n  if (isNaN(num)) return '';\n  \n  // Excel base: 30/12/1899\n  const baseDate = new Date(1899, 11, 30);\n  baseDate.setDate(baseDate.getDate() + Math.floor(num));\n\n  const yyyy = baseDate.getFullYear();\n  const mm = String(baseDate.getMonth() + 1).padStart(2, '0');\n  const dd = String(baseDate.getDate()).padStart(2, '0');\n\n  return `${yyyy}${mm}${dd}`;\n};\n\nconst formatarCelular = valor => {\n  if (!valor) return '';\n  let num = valor.toString().replace(/\\D/g, '').trim();\n  if (num.startsWith('55') && num.length > 11) {\n    num = num.slice(2);\n  }\n  return num ? `=\"${num}\"` : '';\n};\n\nconst formatarNumeroGrande = valor => {\n  if (!valor) return '';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  return num ? `=\"${num}\"` : '';\n};\n\nconst usarPrimeiraLinhaComoCabecalho = data => {\n  if (!Array.isArray(data) || data.length < 2) return [];\n  const headerRow = data[0];\n  const conteudo = data.slice(1);\n  return conteudo.map(row => {\n    const obj = {};\n    headerRow.forEach((col, i) => {\n      obj[col?.toString().trim()] = row[i];\n    });\n    return obj;\n  });\n};\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = usarPrimeiraLinhaComoCabecalho(inputData[0].data);\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n    if (entrada) valor = row[entrada] ?? '';\n\n    switch (saida) {\n      case 'CPF/CNPJ (A)':\n      case 'CPF/CNPJ (D)':\n        valor = formatarCPF(valor);\n        break;\n      case 'CELULAR (K)':\n        valor = formatarCelular(valor);\n        break;\n      case 'COBRANÇA FATURA (N)':\n        valor = formatarNumeroGrande(valor);\n        break;\n      // ❌ NÃO FORMATAR A DATA\n      case 'DATA DE VENCIMENTO (O)':\n        valor = formatarDataSerialExcel(valor);\n        break;\n      case 'VALOR (P)':\n        valor = formatarValor(valor);\n        break;\n      case 'EMAIL (Q)':\n        valor = limparEmail(valor);\n        break;\n    }\n\n    novo[saida] = valor;\n  }\n\n  for (const [saida] of Object.entries(map)) {\n    if (saida.includes('VAZIA') && !(saida in novo)) novo[saida] = '';\n  }\n\n  return { json: novo };\n});\n\nconst resultadoFinal = output.filter(item => {\n  const str = Object.values(item.json || {})\n    .join('')\n    .replace(/[^A-Za-z0-9]/g, '')\n    .trim();\n  return str.length > 0;\n});\n\nreturn resultadoFinal;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -16
+      ],
+      "id": "a52caf75-3a22-48f5-8bd7-5bfe0b6e5968",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {
+    "Respond to Webhook": [
+      {
+        "json": {}
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1e5a97f2-9938-4dd9-bb84-996132c50357",
+  "meta": {
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "dU_r8lc9YdnFCID5OnATa",
+  "tags": []
+}

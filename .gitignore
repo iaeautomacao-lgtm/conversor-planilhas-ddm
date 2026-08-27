@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Node / Lovable
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+etl-ddm-*
+
+# API storage fallback
+FRONTEND_CPANEL/api/storage/*.json
+!FRONTEND_CPANEL/api/storage/.gitkeep
+
+# Environment variables
+.env
+.env.local

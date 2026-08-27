@@ -1,0 +1,199 @@
+{
+  "name": "BEZERRA DE ARAUJO - CBA",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## BEZERRA DE ARAUJO",
+        "height": 432,
+        "width": 2048,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1600,
+        144
+      ],
+      "typeVersion": 1,
+      "id": "18419ca1-fb95-4e19-aec9-66215f12dbfa",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bezerradearaujoCBA",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1456,
+        304
+      ],
+      "id": "68de16d3-9a8e-4725-90b4-dd0de4b5af10",
+      "name": "Webhook",
+      "webhookId": "dee9af55-2994-4e32-8828-91758a08d27f"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=windows-1252"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"bezerra.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        128,
+        304
+      ],
+      "id": "884a7ae5-4017-4ccb-82eb-f01aff8822c7",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"binaryPropertyName\": \"file0\",\n\"options\": {\n  \"delimiter\": \";\",\n  \"fileName\": \"saida.csv\",\n  \"encoding\": \"windows-1252\",\n  \"headerRow\": \"true\"\n}\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "saida.csv",
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        304
+      ],
+      "id": "476982a6-c8fe-4724-8073-f10fa3ddcabc",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "content": "## REGRAS\n1.\tPrestar atenção nos dados do responsável financeiro, pois, tem colégio e faculdade.\n2.\tFACULDADE (cliente cód 95) importar tipo de débito como “Graduação Presencial”\n3.\tCOLÉGIO (cliente cód 95) e PÓS importar tipo de débito como “Mensalidade”, selecionar filial colégio, formatar CPF para 11 dígitos, formatar valor para duas casas decimais, retirar pontos, vírgulas, dois pontos e ponto e vírgula do endereço, não formatar a matrícula. Usar a planilha com responsável financeiro para COLÉGIO.\n4.\tVerificar se consta acionado o botam de cobrar responsável financeiro no cadastro do cliente cód 95 antes de importar COLÉGIO\n5.\tCOLÉGIO / PÓS e FACULDADE - elimina sim / baixa sim / atualiza não\n\n\n",
+        "height": 256,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1504,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "3972a3ee-c9f1-4bec-a2f4-c1e0496e3392",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🚀 ETL CBA — PADRÃO PRODUÇÃO\n\n// 🔤 normalização\nconst normalize = str =>\n  str\n    ? str.toString().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().trim()\n    : '';\n\n// 🧹 limpeza básica\nconst limpar = v =>\n  v !== null && v !== undefined ? v.toString().trim() : '';\n\n// 🔥 evita notação científica\nconst safe = v => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'number') return v.toFixed(0);\n  return v.toString();\n};\n\n// ✅ CPF — 11 dígitos com zeros à esquerda, forçando texto no Excel\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  const cpfFormatado = num.padStart(11, '0').slice(-11);\n  return `=\"${cpfFormatado}\"`;\n};\n\n// 📮 CEP\nconst formatarCEP = v => {\n  let num = safe(v).replace(/\\D/g,'');\n  return num.padStart(8,'0').slice(0,8);\n};\n\n// 📞 TELEFONE (remove tudo + detecta múltiplos)\nconst formatarTelefones = v => {\n\n  if (!v) return { tel1: '', tel2: '' };\n\n  // quebra possíveis múltiplos\n  const partes = v.toString().split(/[\\/|,;]/);\n\n  const limparNumero = num =>\n    num.replace(/\\D/g,'');\n\n  const nums = partes.map(p => limparNumero(p)).filter(n => n.length >= 8);\n\n  return {\n    tel1: nums[0] || '',\n    tel2: nums[1] || ''\n  };\n};\n\n// 📅 DATA → AAAAMMDD\nconst formatarData = v => {\n\n  if (!v) return '';\n\n  const s = v.toString().trim();\n\n  if (/^\\d{8}$/.test(s)) return s;\n\n  if (/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(s)) {\n    const [d,m,a] = s.split('/');\n    return `${a}${m.padStart(2,'0')}${d.padStart(2,'0')}`;\n  }\n\n  return '';\n};\n\n\n\n// 💰 Valor — duas casas decimais com vírgula, forçando texto no Excel\nconst formatarValor = valor => {\n  if (valor === undefined || valor === null || valor === '') return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim();\n  numStr = numStr.replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`;\n};\n\n// 🏠 ENDEREÇO\nconst formatarEndereco = v =>\n  v ? v.toString().replace(/[.,;:]/g,'').trim() : '';\n\n// 📥 leitura (CBA já vem do node anterior)\nlet inputData = $input.all().map(i => i.json);\n\n// 🧭 headers dinâmicos\nconst headers = {};\nif (inputData.length) {\n  Object.keys(inputData[0]).forEach(k => {\n    headers[normalize(k)] = k;\n  });\n}\n\n// 🔍 getValue\nconst getValue = (row, col) => {\n  const key = headers[normalize(col)];\n  return key ? row[key] : '';\n};\n\n// 🧱 processamento\nconst output = inputData.map(row => {\n\n  // 📞 trata telefone + celular juntos\n  const telRaw = getValue(row,'TELEFONE') || getValue(row,'CELULAR');\n  const tels = formatarTelefones(telRaw);\n\n  return {\n    json: {\n\n      \n      'MATRÍCULA': getValue(row,'MATRÍCULA'),\n\n      'NOME': getValue(row,'NOME'),\n\n      'CURSO': getValue(row,'CURSO'),\n\n      'CPF': formatarCPF(getValue(row,'CPF')),\n\n      'NASC': formatarData(getValue(row,'NASC')),\n\n      'ENDERECO': formatarEndereco(getValue(row,'ENDERECO')),\n\n      'BAIRRO': getValue(row,'BAIRRO'),\n\n      'CIDADE': getValue(row,'CIDADE'),\n\n      'CEP': formatarCEP(getValue(row,'CEP')),\n\n      'ESTADO': getValue(row,'ESTADO'),\n\n      'TELEFONE': tels.tel1,\n\n      'CELULAR': tels.tel2,\n\n      'REFERENCIA': getValue(row,'REFERENCIA'),\n     \n      'DATA PARCELA': formatarData(getValue(row,'DATA PARCELA')),\n    \n      'VALOR PARCEL': formatarValor(getValue(row,'VALOR PARCEL')),\n  \n      'RESPONSAVEL': getValue(row,'RESPONSAVEL'),\n\n      'CPF RESPONSAVEL': formatarCPF(getValue(row,'CPF RESPONSAVEL')),\n\n      'RESPONSAVEL NASCIMENTO': formatarData(getValue(row,'NASC')),\n\n      'RESPONSAVEL ENDERECO': formatarEndereco(getValue(row,'ENDERECO')),\n      \n      'RESPONSAVEL BAIRRO': getValue(row,'BAIRRO'),\n\n      'RESPONSAVEL CIDADE': getValue(row,'CIDADE'),\n\n      'RESPONSAVEL CEP': formatarCEP(getValue(row,'CEP')),\n\n      'RESPONSAVEL ESTADO': getValue(row,'ESTADO'),\n\n      'RESPONSAVEL TELEFONE': tels.tel1,\n\n      'RESPONSAVEL CELULAR': tels.tel2,\n\n      'RESPONSAVEL EMAIL': getValue(row,'E-MAIL'),\n    \n      'DADOS ESPECIFICOS CLIENT': getValue(row,'VALOR'),\n  \n      'VALOR PARCELA2 (BOLSA)': getValue(row,'VALOR')\n\n    }\n  };\n\n});\n\n// remove linhas vazias\nreturn output.filter(item =>\n  Object.values(item.json).some(v => v && v.toString().trim() !== '')\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        304
+      ],
+      "id": "17cb1a8a-1147-45b1-a300-15333df04e3f",
+      "name": "CBA",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "file0",
+        "options": {}
+      },
+      "name": "Extract",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        304
+      ],
+      "id": "b8a61704-d274-42bc-8a8a-309f174ba4df"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CBA": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract": {
+      "main": [
+        [
+          {
+            "node": "CBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "550a07bb-a140-4d6e-a97a-88bfe64462cb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "J3f4D-HSvV3rrBAgDOg-0",
+  "tags": [
+    {
+      "updatedAt": "2025-12-30T10:41:52.086Z",
+      "createdAt": "2025-12-30T10:41:52.086Z",
+      "id": "vP19iqpq9T24Z8bI",
+      "name": "Desenvolvimento"
+    }
+  ]
+}

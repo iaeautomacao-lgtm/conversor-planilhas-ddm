@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+
+# Dados de alunos (PII) — nunca versionar
+storage/uploads/*
+storage/outputs/*
+!storage/uploads/.gitkeep
+!storage/outputs/.gitkeep

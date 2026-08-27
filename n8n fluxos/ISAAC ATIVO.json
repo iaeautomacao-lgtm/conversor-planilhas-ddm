@@ -1,0 +1,228 @@
+{
+  "name": "ISAAC ATIVO",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ISAAC ativo",
+        "height": 480,
+        "width": 2144,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2784,
+        -608
+      ],
+      "typeVersion": 1,
+      "id": "143b665f-bd9d-4812-a096-866a23ffa547",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "file0",
+        "options": {
+          "delimiter": ","
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2144,
+        -448
+      ],
+      "id": "45b0bfff-c128-4f1d-95bf-926adab161c1",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "isaacativo",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2720,
+        -448
+      ],
+      "id": "1e1dbf77-ad8e-4bf0-af53-f9df5f31142e",
+      "name": "Webhook1",
+      "webhookId": "dee9af55-2994-4e32-8828-91758a08d27f"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=windows-1252"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"isaac.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -992,
+        -448
+      ],
+      "id": "ec53fab5-270f-4470-8636-f77e13522438",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"parameters\": {\n  \"operation\": \"csv\",\n  \"binaryPropertyName\": \"file\",\n  \"options\": {\n    \"fileName\": \"isaac.csv\",\n    \"delimiter\": \";\",\n    \"encoding\": \"windows-1252\"\n  }\n}\n\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "saida.csv",
+          "headerRow": false
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1472,
+        -448
+      ],
+      "id": "ef5fb249-6f40-4367-a04b-af80e21a1654",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalizarStatus = v =>\n  v === null || v === undefined ? ''\n  : String(v).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();\n\nconst map = {\n  'CPF (A)': 'CPF',\n  'NOME ALUNO (B)': 'NOME_ALUNO',\n  'NOME ESCOLA (C)': 'NOME_ESCOLA',\n  'CPF (D)': 'CPF',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'TELEFONE (K)': 'TELEFONE',\n  'VAZIA (L)': '',\n  'VAZIA (M)': '',\n  'MENSALIDADE (N)': '',\n  'DATA RECEBIVEL RECENTE (O)': 'DIAS_INADIMPLENTE',\n  'VALOR DEVIDO (P)': 'VALOR_DEVIDO',\n  'EMAIL (Q)': 'EMAIL',\n  'NOME RESPONSAVEL (R)': 'NOME_RESPONSAVEL',\n  'CPF (S)': 'CPF',\n  'VAZIA (T)': '',\n  'VAZIA (U)': '',\n  'VAZIA (V)': '',\n  'VAZIA (W)': '',\n  'VAZIA (X)': '',\n  'VAZIA (Y)': '',\n  'TELEFONE (Z)': 'TELEFONE',\n  'VAZIA (AA)': '',\n  'EMAIL (AB)': 'EMAIL'\n};\n\nconst limparBase = v => v === null || v === undefined ? '' : String(v).replace(/[\"']/g, '').trim();\nconst formatarCPF = v => '=\"' + String(v ?? '').replace(/\\D/g, '').padStart(11, '0').slice(-11) + '\"';\nconst formatarTelefone = v => limparBase(v).replace(/\\D/g, '');\nconst formatarEmail = v => limparBase(v).toLowerCase();\n\nconst calcularDataPorDias = dias => {\n  const diasNum = parseInt(dias, 10);\n  if (isNaN(diasNum)) return '';\n  const hoje = new Date();\n  hoje.setDate(hoje.getDate() - diasNum);\n  return hoje.getFullYear() +\n    String(hoje.getMonth() + 1).padStart(2, '0') +\n    String(hoje.getDate()).padStart(2, '0');\n};\n\nconst formatarValor = v => {\n  if (v === null || v === undefined || v === '') return '=\"0,00\"';\n  const s = String(v).trim().replace(/[^\\d.,]/g, '');\n  let num;\n  if (/^\\d{1,3}(\\.\\d{3})*,\\d+$/.test(s)) {\n    num = parseFloat(s.replace(/\\./g, '').replace(',', '.'));\n  } else if (/^\\d+\\.\\d+$/.test(s)) {\n    num = parseFloat(s);\n  } else {\n    num = parseFloat(s.replace(',', '.'));\n  }\n  if (isNaN(num)) return '=\"0,00\"';\n  return '=\"' + num.toFixed(2).replace('.', ',') + '\"';\n};\n\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) inputData = inputData[0].data;\n\ninputData = inputData.filter(row => {\n  const chaveStatus = Object.keys(row).find(k => normalizarStatus(k) === 'status');\n  if (!chaveStatus) return false;\n  return normalizarStatus(row[chaveStatus]) === 'inadimplente';\n});\n\nconst output = inputData.map(row => {\n  const novo = {};\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = entrada ? row[entrada] ?? '' : '';\n    switch (saida) {\n      case 'CPF (A)': case 'CPF (D)': case 'CPF (S)':\n        valor = formatarCPF(valor); break;\n      case 'TELEFONE (K)': case 'TELEFONE (Z)':\n        valor = formatarTelefone(valor); break;\n      case 'EMAIL (Q)': case 'EMAIL (AB)':\n        valor = formatarEmail(valor); break;\n      case 'DATA RECEBIVEL RECENTE (O)':\n        valor = calcularDataPorDias(row['DIAS_INADIMPLENTE']); break;\n      case 'VALOR DEVIDO (P)':\n        valor = formatarValor(valor); break;\n      case 'MENSALIDADE (N)':\n        valor = 'MENSALIDADE'; break;\n      default:\n        valor = limparBase(valor);\n    }\n    novo[saida] = String(valor);\n  }\n  return { json: novo };\n});\n\nreturn output.filter(item => Object.values(item.json).some(v => v !== ''));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1856,
+        -448
+      ],
+      "id": "e7650b09-4f1a-4676-8b57-64a4c450d053",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === ISAAC ATIVO - XLSX PADRÃO ===\n\nconst map = {\n  'CPF (A)': 'CPF',\n  'NOME ALUNO (B)': 'NOME_ALUNO',\n  'NOME ESCOLA (C)': 'NOME_ESCOLA',\n  'CPF (D)': 'CPF',\n  'VAZIA (E)': '',\n  'VAZIA (F)': '',\n  'VAZIA (G)': '',\n  'VAZIA (H)': '',\n  'VAZIA (I)': '',\n  'VAZIA (J)': '',\n  'TELEFONE (K)': 'TELEFONE',\n  'VAZIA (L)': '',\n  'VAZIA (M)': '',\n  'MENSALIDADE (N)': '',\n  'DATA RECEBIVEL RECENTE (O)': 'DATA_RECEBIVEL_VENCIDO_MAIS_RECENTE',\n  'VALOR DEVIDO (P)': 'VALOR_DEVIDO',\n  'EMAIL (Q)': 'EMAIL',\n  'NOME RESPONSAVEL (R)': 'NOME_RESPONSAVEL',\n  'CPF (S)': 'CPF',\n  'VAZIA (T)': '',\n  'VAZIA (U)': '',\n  'VAZIA (V)': '',\n  'VAZIA (W)': '',\n  'VAZIA (X)': '',\n  'VAZIA (Y)': '',\n  'TELEFONE (Z)': 'TELEFONE',\n  'VAZIA (AA)': '',\n  'EMAIL (AB)': 'EMAIL'\n};\n\n// 🔧 Funções auxiliares seguras\nconst limparTexto = t => {\n  if (t === null || t === undefined) return '';\n  const str = String(t);\n  if (typeof str.normalize !== 'function') return str.trim();\n  return str\n    .normalize('NFD')                     // remove acentuação\n    .replace(/[\\u0300-\\u036f]/g, '')      // remove diacríticos\n    .replace(/[.,;:()\\-]/g, '')           // remove pontuação\n    .trim();\n};\n\nconst formatarCPF = v => !v\n  ? '00000000000'\n  : v.toString().replace(/\\D/g, '').padStart(11, '0').slice(-11);\n\nconst formatarData = d => {\n  if (!d) return '';\n  const obj = new Date(d);\n  if (!isNaN(obj))\n    return `${obj.getFullYear()}${String(obj.getMonth() + 1).padStart(2, '0')}${String(obj.getDate()).padStart(2, '0')}`;\n  if (/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(d)) {\n    const [dia, mes, ano] = d.split('/');\n    return `${ano}${mes.padStart(2, '0')}${dia.padStart(2, '0')}`;\n  }\n  return '';\n};\n\nconst formatarValor = v =>\n  !v\n    ? '0,00'\n    : (parseFloat(v.toString().replace(/[^\\d,.-]/g, '').replace(',', '.')) || 0)\n        .toFixed(2)\n        .replace('.', ',');\n\nconst limparEmail = e =>\n  e ? e.toString().replace(/['\"]/g, '').trim() : '';\n\nconst formatarTelefone = v =>\n  v ? limparTexto(v.toString()) : '';\n\n// 🔍 Lê dados\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = inputData[0].data;\n}\n\n// 🔄 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = entrada ? row[entrada] ?? '' : '';\n    switch (saida) {\n      case 'CPF (A)':\n      case 'CPF (D)':\n      case 'CPF (S)':\n        valor = formatarCPF(valor);\n        break;\n      case 'DATA RECEBIVEL RECENTE (O)':\n        valor = formatarData(valor);\n        break;\n      case 'VALOR DEVIDO (P)':\n        valor = formatarValor(valor);\n        break;\n      case 'EMAIL (Q)':\n      case 'EMAIL (AB)':\n        valor = limparEmail(valor);\n        break;\n      case 'TELEFONE (K)':\n      case 'TELEFONE (Z)':\n        valor = formatarTelefone(valor);\n        break;\n      default:\n        valor = limparTexto(valor);\n    }\n    novo[saida] = valor;\n  }\n\n  return { json: novo };\n});\n\n// Remove linhas totalmente vazias\nreturn output.filter(item =>\n  Object.values(item.json).some(v => v && v !== '')\n);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1696,
+        -784
+      ],
+      "id": "358c2df0-21f7-46f7-a76d-9f21c251339a",
+      "name": "Code in JavaScript1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## SÓ FILTRA PELOS \"INADIMPLENTES",
+        "height": 112
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2608,
+        -768
+      ],
+      "typeVersion": 1,
+      "id": "6eff70be-1fec-44bf-a8c8-842e6821d21d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = await this.helpers.getBinaryDataBuffer(0, 'file0');\nconst raw = binaryData.toString('utf-8');\n\nconst lines = raw.split('\\r\\n');\nconst delimiter = lines[0].includes(';') ? ';' : ',';\nconst output = [];\n\nfor (const line of lines) {\n  if (!line.trim()) continue;\n\n  let l = line;\n\n  if (l.startsWith('\"') && l.endsWith('\"')) {\n    l = l.slice(1, -1);\n  }\n\n  l = l.replace(/\"\"/g, '\\x01');\n\n  let parts = l.split(delimiter);\n  parts = parts.slice(0, 13);\n\n  const cleaned = parts.map(cell => {\n    cell = cell.replace(/\\x01/g, '').trim();\n    cell = cell.replace(/^(\\d+),(\\d+)$/, '$1.$2');\n    cell = cell.replace(/,/g, ' | ');\n    cell = cell.replace(/\"/g, '');\n    return cell;\n  });\n\n  if (delimiter === ',' && cleaned.length === 13 &&\n      /^\\d+$/.test(cleaned[5]) && /^\\d{1,2}$/.test(cleaned[6])) {\n    cleaned[5] = cleaned[5] + '.' + cleaned[6];\n    cleaned.splice(6, 1);\n    cleaned.push('');\n  }\n\n  output.push(cleaned.join(','));\n}\n\nconst newCsv = output.join('\\r\\n');\nconst newBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(newCsv, 'utf-8'),\n  'cleaned.csv',\n  'text/csv'\n);\n\nreturn [{ json: {}, binary: { file0: newBinary } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2416,
+        -448
+      ],
+      "id": "cbee4e21-4858-4480-b687-45edc5342832",
+      "name": "Code in JavaScript2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d56345f3-327a-4402-a04d-d7cc3355543a",
+  "meta": {
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "bqwIOWIDhFAN5xiS-PCCb",
+  "tags": []
+}

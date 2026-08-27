@@ -1,0 +1,211 @@
+{
+  "name": "UNIVASSOURAS",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## UNIVASSOURAS\n",
+        "height": 480,
+        "width": 1936,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -304,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "f647720c-c29d-4ddc-af6d-579a133b1cd0",
+      "name": "Sticky Note24",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b6360a5d-b610-4abf-9a09-908e8b132d7d",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -240,
+        -192
+      ],
+      "id": "cb532acf-c468-4024-a2c8-da584186566f",
+      "name": "Webhook",
+      "webhookId": "b6360a5d-b610-4abf-9a09-908e8b132d7d"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/csv; charset=windows-1252"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"multivix.csv\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1456,
+        -192
+      ],
+      "id": "34d7bfb2-5685-4087-a521-1639027c2939",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "=\"parameters\": {\n  \"operation\": \"csv\",\n  \"binaryPropertyName\": \"file\",\n  \"options\": {\n    \"fileName\": \"multivix.csv\",\n    \"delimiter\": \";\",\n    \"encoding\": \"windows-1252\"\n  }\n}\n\n",
+        "options": {
+          "delimiter": ";",
+          "fileName": "multivix.csv",
+          "headerRow": false
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        976,
+        -192
+      ],
+      "id": "3888aca7-8c8f-4a35-8e65-98fa361c8d29",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "file0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -192
+      ],
+      "id": "4a2915cc-3332-42dd-a8b8-b84e4b5647db",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🧭 Mapeamento fixo entre as colunas de saída e as originais\nconst map = {\n  'MATRICULA': 'RA',\n  'NOME ALUNO': 'Aluno',\n  'CURSO': 'Curso',\n  'CPF': 'Cpf',\n  'DATA NASCIMENTO': '', // vazio\n  'ENDEREÇO': 'RUA',\n  'BAIRRO': 'BAIRRO',\n  'CIDADE': 'CIDADE',\n  'CEP': 'CEP',\n  'ESTADO': 'ESTADO',\n  'TELEFONE': 'Telefone 1',\n  'CELULAR': 'Telefone 2',\n  'RESPONSÁVEL': 'Responsavel Financeiro',\n  'REFERENCIA': 'Ref',\n  'DATA VENCIMENTO': 'Data Vencimento',\n  'VALOR PARCELA': 'INADIMPLENCIA',\n  'EMAIL': 'Email'\n};\n\n// 🧩 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\n\nconst limparEndereco = texto =>\n  texto ? texto.toString().replace(/[.,;:]/g, '').trim() : '';\n\n// ✅ CPF — 11 dígitos com zeros à esquerda, forçando texto no Excel\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  const cpfFormatado = num.padStart(11, '0').slice(-11);\n  return `=\"${cpfFormatado}\"`; // ✅ Excel mantém os zeros como texto\n};\n\n// 📅 Data formato AAAAMMDD\nconst formatarData = data => {\n  if (!data) return '';\n  const d = new Date(data);\n  if (isNaN(d)) return '';\n  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;\n};\n\n// 💰 Valor — sempre duas casas decimais com vírgula\nconst formatarValor = valor => {\n  if (valor === undefined || valor === null || valor === '') return '';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim();\n  numStr = numStr.replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '';\n  return num.toFixed(2).replace('.', ',');\n};\n\n// ✉️ Limpa e-mail\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = inputData[0].data;\n}\n\n// 🧩 Normaliza cabeçalhos\nconst headers = {};\nif (inputData.length > 0) {\n  Object.keys(inputData[0]).forEach(key => {\n    headers[normalize(key)] = key;\n  });\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n    if (entrada) {\n      const match = headers[normalize(entrada)];\n      valor = match ? row[match] ?? '' : '';\n    }\n\n    // Aplicar formatações específicas\n    switch (saida) {\n      case 'ENDEREÇO':\n        valor = limparEndereco(valor);\n        break;\n      case 'CPF':\n        valor = formatarCPF(valor);\n        break;\n      case 'DATA VENCIMENTO':\n        valor = formatarData(valor);\n        break;\n      case 'VALOR PARCELA':\n        valor = formatarValor(valor);\n        break;\n      case 'TELEFONE':\n        valor = row['Telefone 1'] ?? '';\n        break;\n      case 'CELULAR':\n        valor = row['Telefone 2'] ?? '';\n        break;\n      case 'EMAIL':\n        valor = limparEmail(valor);\n        break;\n    }\n\n    novo[saida] = valor;\n  }\n\n  // ✅ Coluna adicional \"INADIMPLENCIA MENOS BOLSAS\"\n  const valorInadBolsas = row['INADIMPLENCIA MENOS BOLSAS CONDICIONAIS'] ?? '';\n  const valorFormatado = formatarValor(valorInadBolsas);\n\n  const ordenado = {};\n  for (const key of Object.keys(novo)) {\n    ordenado[key] = novo[key];\n    if (key === 'EMAIL') {\n      ordenado[''] = ''; // Coluna R vazia\n      ordenado['INADIMPLENCIA MENOS BOLSAS'] = valorFormatado;\n    }\n  }\n\n  return { json: ordenado };\n});\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        432
+      ],
+      "id": "83534bfa-fff3-438e-9162-a3f2e3df81a5",
+      "name": "Code in JavaScript",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🧭 Mapeamento fixo entre as colunas de saída e as originais\nconst map = {\n  'MATRICULA': 'RA',\n  'NOME ALUNO': 'Aluno',\n  'CURSO': 'Curso',\n  'CPF': 'Cpf',\n  'DATA NASCIMENTO': '', // vazio\n  'ENDEREÇO': 'RUA',\n  'BAIRRO': 'BAIRRO',\n  'CIDADE': 'CIDADE',\n  'CEP': 'CEP',\n  'ESTADO': 'ESTADO',\n  'TELEFONE': 'Telefone 1',\n  'CELULAR': 'Telefone 2',\n  'RESPONSÁVEL': 'Responsavel Financeiro',\n  'REFERENCIA': 'Ref',\n  'DATA VENCIMENTO': 'Data Vencimento',\n  'VALOR PARCELA': 'INADIMPLENCIA',\n  'EMAIL': 'Email'\n};\n\n// 🧩 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\n\nconst limparEndereco = texto =>\n  texto ? texto.toString().replace(/[.,;:]/g, '').trim() : '';\n\n// ✅ CPF — 11 dígitos com zeros à esquerda, forçando texto no Excel\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  const cpfFormatado = num.padStart(11, '0').slice(-11);\n  return `=\"${cpfFormatado}\"`;\n};\n\n// 📅 Data formato AAAAMMDD\nconst formatarData = data => {\n  if (!data) return '';\n  const d = new Date(data);\n  if (isNaN(d)) return '';\n  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;\n};\n\n// 💰 Valor — duas casas decimais com vírgula, forçando texto no Excel\nconst formatarValor = valor => {\n  if (valor === undefined || valor === null || valor === '') return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim();\n  numStr = numStr.replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`; // força como texto Excel\n};\n\n// ✉️ Limpa e-mail\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = inputData[0].data;\n}\n\n// 🧩 Normaliza cabeçalhos\nconst headers = {};\nif (inputData.length > 0) {\n  Object.keys(inputData[0]).forEach(key => {\n    headers[normalize(key)] = key;\n  });\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n    if (entrada) {\n      const match = headers[normalize(entrada)];\n      valor = match ? row[match] ?? '' : '';\n    }\n\n    // Aplicar formatações específicas\n    switch (saida) {\n      case 'ENDEREÇO':\n        valor = limparEndereco(valor);\n        break;\n      case 'CPF':\n        valor = formatarCPF(valor);\n        break;\n      case 'DATA VENCIMENTO':\n        valor = formatarData(valor);\n        break;\n      case 'VALOR PARCELA':\n        valor = formatarValor(valor); // ✅ formatado e forçado como texto\n        break;\n      case 'TELEFONE':\n        valor = row['Telefone 1'] ?? '';\n        break;\n      case 'CELULAR':\n        valor = row['Telefone 2'] ?? '';\n        break;\n      case 'EMAIL':\n        valor = limparEmail(valor);\n        break;\n    }\n\n    novo[saida] = valor;\n  }\n\n  // ✅ Coluna adicional \"INADIMPLENCIA MENOS BOLSAS\"\n  const valorInadBolsasRaw = row['INADIMPLENCIA MENOS BOLSAS CONDICIONAIS'] ?? '';\n  const valorInadBolsasFormatado = formatarValor(valorInadBolsasRaw); // ✅ formatado com =\"123,45\"\n\n  const ordenado = {};\n  for (const key of Object.keys(novo)) {\n    ordenado[key] = novo[key];\n    if (key === 'EMAIL') {\n      ordenado[''] = ''; // Coluna R vazia\n      ordenado['INADIMPLENCIA MENOS BOLSAS'] = valorInadBolsasFormatado;\n    }\n  }\n\n  return { json: ordenado };\n});\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -608
+      ],
+      "id": "b685acac-b4ea-416f-9f4e-4e8b67311d70",
+      "name": "Code in JavaScript2",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🧭 Mapeamento fixo entre as colunas de saída e as originais\nconst map = {\n  'MATRICULA': 'MATRÍCULA',\n  'NOME ALUNO': 'NOME',\n  'CURSO': 'CURSO',\n  'CPF': 'CPF',\n  'ENDEREÇO': 'ENDERECO',\n  'BAIRRO': 'BAIRRO',\n  'CIDADE': 'CIDADE',\n  'CEP': 'CEP',\n  'ESTADO': 'ESTADO',\n  'TELEFONE': 'TELEFONE',\n  'CELULAR': 'CELULAR',\n  'RESPONSÁVEL': 'RESPONSAVEL',\n  'REFERENCIA': 'Ref',\n  'DATA VENCIMENTO': 'Data Vencimento',\n  'VALOR PARCELA': 'INADIMPLENCIA',\n  'EMAIL': 'Email'\n};\n\n// 🧩 Funções auxiliares\nconst normalize = str => str ? str.toString().trim().toLowerCase() : '';\n\nconst limparEndereco = texto =>\n  texto ? texto.toString().replace(/[.,;:]/g, '').trim() : '';\n\n// ✅ CPF — 11 dígitos com zeros à esquerda, forçando texto no Excel\nconst formatarCPF = valor => {\n  if (!valor) return '=\"00000000000\"';\n  const num = valor.toString().replace(/\\D/g, '').trim();\n  const cpfFormatado = num.padStart(11, '0').slice(-11);\n  return `=\"${cpfFormatado}\"`;\n};\n\n// 📅 Data formato AAAAMMDD (corrigido e inteligente)\nconst formatarData = data => {\n  if (!data) return '';\n\n  // Se vier como número do Excel (ex: 45678)\n  if (!isNaN(data) && data.toString().length < 6) {\n    const base = new Date(1899, 11, 30);\n    const converted = new Date(base.getTime() + (data * 86400000));\n    return `${converted.getFullYear()}${String(converted.getMonth() + 1).padStart(2, '0')}${String(converted.getDate()).padStart(2, '0')}`;\n  }\n\n  // Se vier no formato dd/mm/yyyy\n  if (/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(data)) {\n    const [dia, mes, ano] = data.split('/');\n    return `${ano}${mes.padStart(2, '0')}${dia.padStart(2, '0')}`;\n  }\n\n  // Se vier no formato yyyy-mm-dd\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(data)) {\n    const [ano, mes, dia] = data.split('-');\n    return `${ano}${mes}${dia}`;\n  }\n\n  // Último recurso: tentar converter com Date\n  const d = new Date(data);\n  if (isNaN(d)) return '';\n  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;\n};\n\n// 💰 Valor — duas casas decimais com vírgula, forçando texto no Excel\nconst formatarValor = valor => {\n  if (valor === undefined || valor === null || valor === '') return '=\"0,00\"';\n  let numStr = valor.toString().replace(/[^\\d,.-]/g, '').trim();\n  numStr = numStr.replace(',', '.');\n  const num = parseFloat(numStr);\n  if (isNaN(num)) return '=\"0,00\"';\n  return `=\"${num.toFixed(2).replace('.', ',')}\"`;\n};\n\n// ✉️ Limpa e-mail\nconst limparEmail = email => email ? email.toString().replace(/['\"]/g, '').trim() : '';\n\n// ☎️ Formata telefone/celular: somente números e apenas o primeiro\nconst formatarTelefoneUnico = valor => {\n  if (!valor) return '';\n  let limpo = valor.toString().replace(/\\D/g, '');\n  if (limpo.length > 11) limpo = limpo.slice(0, 11);\n  return limpo;\n};\n\n// 🔍 Lê dados do nó anterior\nlet inputData = $input.all().map(i => i.json);\nif (inputData.length === 1 && Array.isArray(inputData[0].data)) {\n  inputData = inputData[0].data;\n}\n\n// 🧩 Normaliza cabeçalhos\nconst headers = {};\nif (inputData.length > 0) {\n  Object.keys(inputData[0]).forEach(key => {\n    headers[normalize(key)] = key;\n  });\n}\n\n// 🧱 Processamento principal\nconst output = inputData.map(row => {\n  const novo = {};\n\n  for (const [saida, entrada] of Object.entries(map)) {\n    let valor = '';\n\n    if (entrada) {\n      const match = headers[normalize(entrada)];\n      valor = match ? row[match] ?? '' : '';\n    }\n\n    // Aplicar formatações específicas\n    switch (saida) {\n      case 'ENDEREÇO':\n        valor = limparEndereco(valor);\n        break;\n\n      case 'CPF':\n        valor = formatarCPF(valor);\n        break;\n\n      case 'DATA VENCIMENTO':\n        valor = formatarData(valor);\n        break;\n\n      case 'VALOR PARCELA':\n        valor = formatarValor(valor);\n        break;\n\n      case 'EMAIL':\n        valor = limparEmail(valor);\n        break;\n\n      case 'TELEFONE':\n        valor = formatarTelefoneUnico(valor);\n        break;\n\n      case 'CELULAR': {\n        // tenta achar qualquer coluna que contenha \"telefone 2\"\n        const tel2Key = Object.keys(headers).find(h => h.includes('telefone 2'));\n        if (tel2Key) {\n          valor = row[headers[tel2Key]] ?? '';\n        }\n\n        // fallback: se vier vazio, usa Telefone 1\n        if (!valor) {\n          const tel1Key = Object.keys(headers).find(h => h.includes('telefone 1'));\n          valor = tel1Key ? row[headers[tel1Key]] ?? '' : '';\n        }\n\n        valor = formatarTelefoneUnico(valor);\n        break;\n      }\n    }\n\n    novo[saida] = valor;\n  }\n\n  // ✅ Coluna adicional \"INADIMPLENCIA MENOS BOLSAS\"\n  const valorInadBolsasRaw = row['INADIMPLENCIA MENOS BOLSAS CONDICIONAIS'] ?? '';\n  const valorInadBolsasFormatado = formatarValor(valorInadBolsasRaw);\n\n  const ordenado = {};\n  for (const key of Object.keys(novo)) {\n    ordenado[key] = novo[key];\n    if (key === 'EMAIL') {\n      ordenado[''] = ''; // Coluna R vazia\n      ordenado['INADIMPLENCIA MENOS BOLSAS'] = valorInadBolsasFormatado;\n    }\n  }\n\n  return { json: ordenado };\n});\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -192
+      ],
+      "id": "374b97ab-8237-41f0-a701-b18c4f649d74",
+      "name": "Code in JavaScript3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "dab22054-a723-4a11-925f-e7ed01bae99d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "98a7f76cbff973591af08e09b5be2fed14b55b37d878782c0638229a94477203"
+  },
+  "nodeGroups": [],
+  "id": "LmAVogpHngGLAwiO",
+  "tags": [
+    {
+      "updatedAt": "2025-12-30T10:41:52.086Z",
+      "createdAt": "2025-12-30T10:41:52.086Z",
+      "id": "vP19iqpq9T24Z8bI",
+      "name": "Desenvolvimento"
+    }
+  ]
+}

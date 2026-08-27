@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integrações - Conversor de Arquivos DDM</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔗</text></svg>">
+</head>
+<body>
+
+  <div class="main-container" style="max-width: 50rem;">
+    <!-- Voltar às Configurações -->
+    <div style="margin-bottom: 2rem;">
+      <a href="settings.html" class="btn btn-ghost btn-sm">
+        ← Voltar às Configurações
+      </a>
+    </div>
+
+    <!-- Header -->
+    <div style="margin-bottom: 2rem;">
+      <h1 style="font-size: 1.875rem; font-weight: 700; color: var(--foreground); margin-bottom: 0.25rem;">Integrações</h1>
+      <p style="color: var(--muted-foreground);">Configure as URLs de webhook para cada instituição</p>
+    </div>
+
+    <!-- Lista de Instituições / Webhooks -->
+    <div id="integrations-list"></div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/integrations.js"></script>
+</body>
+</html>
