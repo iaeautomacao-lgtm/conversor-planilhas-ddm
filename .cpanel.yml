@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/SEU_USUARIO_CPANEL/public_html/
+    - export DEPLOYPATH=/home/grpia/conversor.planilhas.grupoddm.ia.br/
     - /bin/cp -R FRONTEND_CPANEL/* $DEPLOYPATH
