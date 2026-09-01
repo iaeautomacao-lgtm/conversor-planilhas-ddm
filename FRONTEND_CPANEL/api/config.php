@@ -21,6 +21,9 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_PORT', '3306');
 
+// URL Padrão do Backend Python Unificado (Render / Servidor Python)
+define('DEFAULT_PYTHON_BACKEND_URL', 'https://etl-ddm.onrender.com/convert');
+
 function getDbConnection() {
     static $pdo = null;
     if ($pdo !== null) {

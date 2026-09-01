@@ -17,7 +17,7 @@ $institutionId = $_POST['institution'] ?? $_POST['institution_id'] ?? '';
 $webhookUrl = $_POST['webhook_url'] ?? '';
 
 if (empty($webhookUrl)) {
-    // Busca webhook no banco de dados se não foi passado no formulário
+    // Busca webhook customizado no banco de dados se não foi passado no formulário
     $db = getDbConnection();
     if ($db && !empty($institutionId)) {
         try {
@@ -31,6 +31,11 @@ if (empty($webhookUrl)) {
     }
 }
 
+// Se nenhuma URL de webhook customizada for encontrada, redireciona para o Backend Python Unificado
+if (empty($webhookUrl)) {
+    $webhookUrl = DEFAULT_PYTHON_BACKEND_URL;
+}
+
 if (empty($_FILES['file'])) {
     http_response_code(400);
     echo json_encode(["success" => false, "message" => "Nenhum arquivo foi enviado."]);
@@ -39,27 +44,24 @@ if (empty($_FILES['file'])) {
 
 $uploadedFile = $_FILES['file'];
 
-if (empty($webhookUrl)) {
-    // Se não há webhook configurado, podemos acionar o backend Python local caso esteja ativo, ou retornar erro
-    http_response_code(400);
-    echo json_encode([
-        "success" => false, 
-        "message" => "Webhook não configurado para esta instituição. Vá em Configurações > Integrações."
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+// Se a URL for do endpoint Python, garante que o parâmetro institution seja repassado na URL ou POST
+$targetUrl = $webhookUrl;
+if (strpos($targetUrl, '/convert') !== false && strpos($targetUrl, 'institution=') === false) {
+    $separator = (strpos($targetUrl, '?') !== false) ? '&' : '?';
+    $targetUrl .= $separator . 'institution=' . urlencode($institutionId);
 }
 
-// Encaminha a requisição via cURL para o Webhook/Backend Python
+// Encaminha a requisição via cURL para o Backend Python / Webhook
 $ch = curl_init();
 $cfile = new CURLFile($uploadedFile['tmp_name'], $uploadedFile['type'], $uploadedFile['name']);
 
 $postData = [
     'file' => $cfile,
     'filename' => $uploadedFile['name'],
-    'institution' => strtoupper(str_replace('-', '_', $institutionId))
+    'institution' => $institutionId
 ];
 
-curl_setopt($ch, CURLOPT_URL, $webhookUrl);
+curl_setopt($ch, CURLOPT_URL, $targetUrl);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

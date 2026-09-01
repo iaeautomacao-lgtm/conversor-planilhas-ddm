@@ -64,11 +64,7 @@ function handleInstitutionChange(instId) {
 
   const alertNoWebhook = document.getElementById("alert-no-webhook");
   if (alertNoWebhook) {
-    if (instId && !webhookUrl.trim()) {
-      alertNoWebhook.style.display = "flex";
-    } else {
-      alertNoWebhook.style.display = "none";
-    }
+    alertNoWebhook.style.display = "none";
   }
 
   updateProcessButtonState();
@@ -249,9 +245,6 @@ function updateProcessButtonState() {
   } else if (!selectedInstitution) {
     processBtn.disabled = true;
     processBtn.textContent = "Selecione uma instituição primeiro";
-  } else if (!webhookUrl) {
-    processBtn.disabled = true;
-    processBtn.textContent = "Webhook não configurado para esta instituição";
   } else if (isUploading) {
     processBtn.disabled = true;
     processBtn.textContent = "Processando arquivos...";
@@ -265,7 +258,7 @@ function updateProcessButtonState() {
 }
 
 async function processFiles() {
-  if (isUploading || fileQueue.length === 0 || !webhookUrl) return;
+  if (isUploading || fileQueue.length === 0 || !selectedInstitution) return;
 
   isUploading = true;
   updateProcessButtonState();
